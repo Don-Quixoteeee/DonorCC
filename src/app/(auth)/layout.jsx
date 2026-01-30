@@ -1,4 +1,6 @@
 // Auth layout for login and register pages
+export const dynamic = 'force-dynamic'
+
 export default function AuthLayout({ children }) {
   return (
     <div className="min-h-screen flex">
