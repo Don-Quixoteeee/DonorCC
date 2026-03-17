@@ -1,27 +1,23 @@
-version: "3.8"
-
 services:
+
 
   # ── App Container ───────────────────────────────────────────────────────────
   # A "service" is one running container. We only have one here — the Next.js app.
   app:
-<<<<<<< HEAD
-    # Build the app image from the project root (assumes a Dockerfile exists)
-    build: .
-=======
 
 
     # The Docker image to run. This is the pre-built image that GitHub Actions
     # builds and pushes to GitHub Container Registry (GHCR) on every deploy.
     # Instead of building the code on the server (slow), we just download this
     # ready-to-run image (fast).
+    image: ghcr.io/redscall599/qrcode:latest
 
 
->>>>>>> 4a581660816bfc0d534d5fe289b56d8e5362f9cf
     # If the container crashes for any reason, Docker will automatically restart it.
     # "unless-stopped" means it also starts again if the server reboots — but NOT
     # if you manually stopped it with "docker compose down".
     restart: unless-stopped
+
 
     ports:
       # This maps a port on your EC2 server to a port inside the container.
@@ -30,12 +26,14 @@ services:
       # the container where Next.js is listening.
       - "80:3000"
 
-    # env_file tells Docker to read a .env file and inject every line as an
-    # environment variable into the container. This is how the app gets secrets
-    # like DATABASE_URL without them being written in this file.
+
+  # env_file tells Docker to read a .env file and inject every line as an
+  # environment variable into the container. This is how the app gets secrets
+  # like DATABASE_URL without them being written in this file.
     # Make sure the .env file exists on the server before running docker compose up.
     env_file:
       - .env
+
 
     healthcheck:
       # Docker periodically runs this command inside the container to check if
@@ -44,18 +42,23 @@ services:
       # If it fails, Docker marks the container as "unhealthy".
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ > /dev/null 2>&1 || exit 1"]
 
+
       # How often to run the health check (every 10 seconds)
       interval: 10s
+
 
       # If the app doesn't respond within 5 seconds, count it as a failure
       timeout: 5s
 
+
       # After 6 consecutive failures (~1 minute), mark the container as unhealthy
       retries: 6
+
 
       # Wait 15 seconds after the container starts before running the first check.
       # Next.js takes a few seconds to boot up — this prevents false failures.
       start_period: 15s
+
 
     volumes:
       # A "volume" is a folder that persists outside the container.
@@ -66,20 +69,6 @@ services:
       # /app/public/uploads folder inside the container.
       - uploads_data:/app/public/uploads
 
-  # Helper service: writes a .env into the project root using the
-  # DATABASE_URL environment variable. Run with:
-  #   docker compose run --rm -e DATABASE_URL="<url>" env-writer
-  env-writer:
-    image: alpine:3.18
-    volumes:
-      - ./:/work
-    entrypoint: ["/bin/sh","-c"]
-    command: |
-      if [ -z "${DATABASE_URL:-}" ]; then
-        echo "ERROR: DATABASE_URL is not set" >&2
-        exit 1
-      fi
-      printf '%s\n' "DATABASE_URL=${DATABASE_URL}" > /work/.env
 
 # ── Named Volumes ──────────────────────────────────────────────────────────────
 # Volumes listed here are managed by Docker. They live on the server's disk
@@ -87,4 +76,4 @@ services:
 # To delete all volumes and start fresh: docker compose down -v
 # WARNING: "down -v" will delete all uploaded images permanently.
 volumes:
-  uploads_data:   # Stores user-uploaded images served at /uploads/<filename>ed at /uploads/<filename>
+  uploads_data:   # Stores user-uploaded images served at /uploads/<filename>
