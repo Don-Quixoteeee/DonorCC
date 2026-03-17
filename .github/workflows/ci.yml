@@ -48,7 +48,7 @@ jobs:
   # ...sanitization is handled in the Create step above
 
       - name: Run migrations
-        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" app npx prisma migrate deploy
+        run: docker compose exec -T app npx prisma migrate deploy
       - name: Run tests
         run: docker compose exec -T app npm test  # ← fails if tests fail
       - name: Tear down
