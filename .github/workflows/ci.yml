@@ -23,12 +23,12 @@ jobs:
 
           # Use Python to avoid shell parsing issues with special characters in secrets
           python - <<'PY' > /tmp/db_url.txt
-import os
-s = os.environ.get('DB_SECRET', '')
-if s.startswith('DATABASE_URL='):
-    s = s[len('DATABASE_URL='):]
-print(s, end='')
-PY
+          import os
+          s = os.environ.get('DB_SECRET', '')
+          if s.startswith('DATABASE_URL='):
+              s = s[len('DATABASE_URL='):]
+          print(s, end='')
+          PY
 
           DBURL=$(cat /tmp/db_url.txt)
           if [ -z "$DBURL" ]; then
@@ -37,8 +37,8 @@ PY
           fi
 
           cat > .env <<EOF
-DATABASE_URL=$DBURL
-EOF
+          DATABASE_URL=$DBURL
+          EOF
       - name: Build containers
         run: docker compose build          # ← builds your Dockerfile
       - name: Start services
