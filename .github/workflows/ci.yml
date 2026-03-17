@@ -14,14 +14,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4          # ← copies repo to runner
+      - name: Create .env for docker-compose
+        # Create a .env file from repository secrets so docker-compose's env_file can read values.
+        run: |
+          cat > .env <<EOF
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          EOF
       - name: Build containers
         run: docker compose build          # ← builds your Dockerfile
       - name: Start services
         run: docker compose up -d          # ← starts app + db
       - name: Wait for database
         run: sleep 15                      # ← gives Postgres time
+      - name: Validate DATABASE_URL secret
+        run: |
+          # Basic checks to give clearer failure messages in CI
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "ERROR: DATABASE_URL secret is not set." >&2
+            exit 1
+          fi
+          if [[ "${{ secrets.DATABASE_URL }}" == DATABASE_URL=* ]]; then
+            echo "ERROR: DATABASE_URL secret looks like 'KEY=VALUE'. Set the secret to the bare URL (no 'DATABASE_URL=' prefix)." >&2
+            exit 1
+          fi
+          if [[ "${{ secrets.DATABASE_URL }}" != postgresql://* ]]; then
+            echo "WARNING: DATABASE_URL does not start with 'postgresql://'. Prisma expects a postgresql scheme. Please verify the secret." >&2
+            # don't fail here to allow alternative schemes, but warn
+          fi
+
       - name: Run migrations
-        run: docker compose exec -T app npx prisma migrate deploy
+        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" app npx prisma migrate deploy
       - name: Run tests
         run: docker compose exec -T app npm test  # ← fails if tests fail
       - name: Tear down
