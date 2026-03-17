@@ -5,8 +5,19 @@ services:
   # ── App Container ───────────────────────────────────────────────────────────
   # A "service" is one running container. We only have one here — the Next.js app.
   app:
+<<<<<<< HEAD
     # Build the app image from the project root (assumes a Dockerfile exists)
     build: .
+=======
+
+
+    # The Docker image to run. This is the pre-built image that GitHub Actions
+    # builds and pushes to GitHub Container Registry (GHCR) on every deploy.
+    # Instead of building the code on the server (slow), we just download this
+    # ready-to-run image (fast).
+
+
+>>>>>>> 4a581660816bfc0d534d5fe289b56d8e5362f9cf
     # If the container crashes for any reason, Docker will automatically restart it.
     # "unless-stopped" means it also starts again if the server reboots — but NOT
     # if you manually stopped it with "docker compose down".
@@ -76,4 +87,4 @@ services:
 # To delete all volumes and start fresh: docker compose down -v
 # WARNING: "down -v" will delete all uploaded images permanently.
 volumes:
-  uploads_data:   # Stores user-uploaded images served at /uploads/<filename>
+  uploads_data:   # Stores user-uploaded images served at /uploads/<filename>ed at /uploads/<filename>
