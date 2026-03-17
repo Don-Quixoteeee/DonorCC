@@ -30,9 +30,8 @@ services:
   # environment variable into the container. This is how the app gets secrets
   # like DATABASE_URL without them being written in this file.
     # Make sure the .env file exists on the server before running docker compose up.
-    environment:
-      - DATABASE_URL=${{ secrets.DATABASE_URL }}
-      - NODE_ENV=production
+        env_file:
+      - .env
 
     healthcheck:
       # Docker periodically runs this command inside the container to check if
