@@ -28,19 +28,28 @@ jobs:
         run: sleep 15                      # ← gives Postgres time
       - name: Validate DATABASE_URL secret
         run: |
+          # Assign secret to a shell variable so special characters won't break conditionals
+          DATABASE_URL="${{ secrets.DATABASE_URL }}"
+
           # Basic checks to give clearer failure messages in CI
-          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+          if [ -z "$DATABASE_URL" ]; then
             echo "ERROR: DATABASE_URL secret is not set." >&2
             exit 1
           fi
-          if [[ "${{ secrets.DATABASE_URL }}" == DATABASE_URL=* ]]; then
-            echo "ERROR: DATABASE_URL secret looks like 'KEY=VALUE'. Set the secret to the bare URL (no 'DATABASE_URL=' prefix)." >&2
-            exit 1
-          fi
-          if [[ "${{ secrets.DATABASE_URL }}" != postgresql://* ]]; then
-            echo "WARNING: DATABASE_URL does not start with 'postgresql://'. Prisma expects a postgresql scheme. Please verify the secret." >&2
-            # don't fail here to allow alternative schemes, but warn
-          fi
+
+          # Detect secrets saved as 'DATABASE_URL=...' (common mistake)
+          case "$DATABASE_URL" in
+            DATABASE_URL=*)
+              echo "ERROR: DATABASE_URL secret looks like 'KEY=VALUE'. Set the secret to the bare URL (no 'DATABASE_URL=' prefix)." >&2
+              exit 1
+              ;;
+          esac
+
+          # Warn if scheme doesn't look like postgresql://
+          case "$DATABASE_URL" in
+            postgresql://*) ;;
+            *) echo "WARNING: DATABASE_URL does not start with 'postgresql://'. Prisma expects a postgresql scheme. Please verify the secret." >&2 ;;
+          esac
 
       - name: Run migrations
         run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" app npx prisma migrate deploy
