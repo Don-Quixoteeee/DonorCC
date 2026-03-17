@@ -10,7 +10,6 @@ services:
     # builds and pushes to GitHub Container Registry (GHCR) on every deploy.
     # Instead of building the code on the server (slow), we just download this
     # ready-to-run image (fast).
-    image: ghcr.io/redscall599/qrcode:latest
 
 
     # If the container crashes for any reason, Docker will automatically restart it.
@@ -31,9 +30,9 @@ services:
   # environment variable into the container. This is how the app gets secrets
   # like DATABASE_URL without them being written in this file.
     # Make sure the .env file exists on the server before running docker compose up.
-    env_file:
-      - .env
-
+    environment:
+      - DATABASE_URL=${{ secrets.DATABASE_URL }}
+      - NODE_ENV=production
 
     healthcheck:
       # Docker periodically runs this command inside the container to check if
