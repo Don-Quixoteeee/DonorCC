@@ -14,6 +14,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4          # ← copies repo to runner
+      - name: Create .env for docker-compose
+        # Create a .env file from repository secrets so docker-compose's env_file can read values.
+        run: |
+          cat > .env <<EOF
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          EOF
       - name: Build containers
         run: docker compose build          # ← builds your Dockerfile
       - name: Start services
@@ -42,9 +48,10 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             if [ ! -d ~/my-app ]; then
-              git clone https://github.com/YOUR-USERNAME/YOUR-REPO.git ~/my-app
+              git clone https://github.com/Don-Quixoteeee/DonorCC.git ~/my-app
             fi
             cd ~/my-app && git pull origin main
             docker compose down
             docker compose up --build -d
             docker compose exec app npx prisma migrate deploy
+
