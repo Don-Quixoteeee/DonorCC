@@ -64,9 +64,10 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             if [ ! -d ~/my-app ]; then
-              git clone https://github.com/YOUR-USERNAME/YOUR-REPO.git ~/my-app
+              git clone https://github.com/Don-Quixoteeee/DonorCC.git ~/my-app
             fi
             cd ~/my-app && git pull origin main
             docker compose down
             docker compose up --build -d
             docker compose exec app npx prisma migrate deploy
+
