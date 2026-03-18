@@ -89,6 +89,9 @@ jobs:
               git clone https://github.com/Don-Quixoteeee/DonorCC.git ~/my-app
             fi
             cd ~/my-app && git pull origin main
+
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
+            
             docker compose down
             docker compose up --build -d
             docker compose exec app npx prisma migrate deploy
