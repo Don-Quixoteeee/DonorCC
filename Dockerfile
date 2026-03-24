@@ -24,6 +24,11 @@ RUN npm install -g pnpm@10.18.1 && \
 # Copy application source
 COPY . .
 
+# Accept build arg
+ARG DATABASE_URL
+
+# Set env for Prisma
+ENV DATABASE_URL=$DATABASE_URL
 
 # Generate Prisma client (schema generator outputs to prisma/generated)
 RUN pnpm prisma generate
