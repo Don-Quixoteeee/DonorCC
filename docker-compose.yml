@@ -1,10 +1,13 @@
 services:
+version: '3.9'  # can remove `version` if Prisma complains
+
+services:
   app:
     build: .
     container_name: donorconnect_app
-    env_file:
-      - .env
     ports:
       - "3000:3000"
-    # Do not restart endlessly in CI; just for local development you can add:
-    restart: unless-stopped
+    env_file:
+      - .env      # during local development
+    environment:
+      DATABASE_URL: ${DATABASE_URL}  # GitHub secret injects here
