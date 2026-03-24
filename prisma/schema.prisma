@@ -3,11 +3,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "./generated"
 }
 
 datasource db {
   provider = "postgresql"
-  // Leave url empty for Prisma 7 CLI; migrations will read from prisma.config.ts
 }
 
 // ============================================================================
