@@ -26,7 +26,7 @@ COPY . .
 
 
 # Add build arg and env var for database
-ARG DATABASE_URL
+ARG DATABASE_URL="postgresql://neondb_owner:npg_RDInN1czhb3e@ep-autumn-union-ahvi5s76-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 ENV DATABASE_URL=${DATABASE_URL}
 
 # Generate Prisma client (schema generator outputs to prisma/generated)
