@@ -6,13 +6,6 @@ services:
   app:
 
 
-    # The Docker image to run. This is the pre-built image that GitHub Actions
-    # builds and pushes to GitHub Container Registry (GHCR) on every deploy.
-    # Instead of building the code on the server (slow), we just download this
-    # ready-to-run image (fast).
-    image: ghcr.io/redscall599/qrcode:latest
-
-
     # If the container crashes for any reason, Docker will automatically restart it.
     # "unless-stopped" means it also starts again if the server reboots — but NOT
     # if you manually stopped it with "docker compose down".
