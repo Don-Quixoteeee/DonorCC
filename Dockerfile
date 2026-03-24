@@ -1,46 +1,39 @@
-# ── BUILDER STAGE ─────────────────────────────
+# Use Node 20 on Alpine
 FROM node:20-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm@10.18.1
-
-# Copy only dependency files first for caching
+# Copy only package files first
 COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install pnpm and dependencies
+RUN npm install -g pnpm@10.18.1 && pnpm install --frozen-lockfile
 
-# Ensure public folder exists to avoid Docker checksum errors
-RUN mkdir -p public && touch public/.gitkeep
-
-# Copy Prisma schema
+# Copy Prisma files and source code
 COPY prisma ./prisma
-
-# Copy the rest of the source code
 COPY . .
 
 # Build Next.js app
 RUN pnpm build
 
-# ── RUNNER / PRODUCTION STAGE ─────────────────────────────
+# ---------- Runner image ----------
 FROM node:20-alpine AS runner
 
-# Set working directory
 WORKDIR /app
 
-# Only copy the necessary files from builder
+# Copy built Next.js files
 COPY --from=builder /app/.next /app/.next
 COPY --from=builder /app/public /app/public
 COPY --from=builder /app/prisma /app/prisma
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/package.json /app/package.json
 
-# Expose the port your app runs on
+# Set environment variable (will be replaced by GitHub Actions secret at runtime)
+ENV DATABASE_URL=""
+
+# Expose port
 EXPOSE 3000
 
-# Start the Next.js server
-# At the end of your Dockerfile
-CMD ["sh", "-c", "until npx prisma db pull; do echo 'Waiting for DB...'; sleep 2; done && pnpm start"]
+# Start the app
+CMD ["pnpm", "start"]
