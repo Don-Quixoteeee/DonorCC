@@ -42,4 +42,5 @@ COPY --from=builder /app/package.json /app/package.json
 EXPOSE 3000
 
 # Start the Next.js server
-CMD ["pnpm", "start"]
+# At the end of your Dockerfile
+CMD ["sh", "-c", "until npx prisma db pull; do echo 'Waiting for DB...'; sleep 2; done && pnpm start"]
