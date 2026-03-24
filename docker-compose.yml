@@ -1,5 +1,6 @@
-services:
 version: '3.9'  # can remove `version` if Prisma complains
+
+services:
   app:
     build: .
     container_name: donorconnect_app
