@@ -1,3 +1,4 @@
+
 # -------------------------
 # Builder stage
 # -------------------------
@@ -18,8 +19,8 @@ RUN npm install -g pnpm@10.18.1 && \
 # Copy rest of the app
 COPY . .
 
-# Generate Prisma client (NO DB needed)
-RUN pnpm prisma generate
+# ❌ REMOVED prisma generate from build stage
+# RUN pnpm prisma generate   <-- DELETE THIS
 
 # Build Next.js app
 RUN pnpm build
@@ -34,6 +35,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Install pnpm in runtime (needed for prisma commands)
+RUN npm install -g pnpm@10.18.1
+
 # Copy built Next.js app
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -44,14 +48,14 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma/generated ./prisma/generated
 COPY --from=builder /app/src/generated ./src/generated
 
-# Copy Prisma config
+# Copy Prisma config (important for your setup)
 COPY --from=builder /app/prisma.config.js ./prisma.config.js
 
-# Copy package.json (optional)
+# Copy package.json
 COPY --from=builder /app/package.json ./package.json
 
 # Expose port
 EXPOSE 3000
 
-# ✅ IMPORTANT: Run Prisma at runtime (env vars available here)
-CMD ["sh", "-c", "pnpm prisma generate && node server.js"]
+# ✅ Prisma runs at runtime (when DATABASE_URL exists)
+CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm prisma generate && node server.js"]
