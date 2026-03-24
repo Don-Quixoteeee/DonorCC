@@ -1,16 +1,20 @@
 import 'dotenv/config'
-import { defineConfig } from 'prisma/config'
+import { defineConfig, env } from 'prisma/config'
 import { PrismaClient } from '@prisma/client'
 
 export const prisma = new PrismaClient({
-  adapter: process.env.DATABASE_URL, // <-- your Neon URL
+  adapter: env('DATABASE_URL'), // Prisma client connects to Neon
 })
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
+
+  datasource: {
+    adapter: env('DATABASE_URL'), // Migrations also use this
+  },
+
   migrations: {
     path: 'prisma/migrations',
-    seed: 'node prisma/seed.js',
+    seed: 'node prisma/seed.js', // optional
   },
-  // Remove the `datasource` block entirely
 })
