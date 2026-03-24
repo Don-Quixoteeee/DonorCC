@@ -1,8 +1,7 @@
 version: "3.9"
 
 services:
-  app:
-    build: .
+  app:...
     container_name: donorcc_app
     restart: unless-stopped
     env_file:
