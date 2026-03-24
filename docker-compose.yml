@@ -1,11 +1,10 @@
-version: "3.9"
-
 services:
-  app:...
-    container_name: donorcc_app
-    restart: unless-stopped
+  app:
+    build: .
+    container_name: donorconnect_app
     env_file:
       - .env
     ports:
-      - "80:3000"
-    command: sh -c "pnpm install && pnpm build && pnpm start"
+      - "3000:3000"
+    # Do not restart endlessly in CI; just for local development you can add:
+    restart: unless-stopped
