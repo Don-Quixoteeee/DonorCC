@@ -6,59 +6,83 @@ on:
     branches: [main]
 
 jobs:
-  # ── JOB 1: always runs ──────────────────────────────
+  # ── JOB 1: Build, test, and run migrations
   build-and-test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}  # ← secret injected
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
+      # Step 1: Checkout code
       - name: Checkout code
-        uses: actions/checkout@v4          # ← copies repo to runner
-      - name: Create and sanitize .env for docker-compose
-        # Uses Python to safely sanitize the secret (strips a leading 'DATABASE_URL=' if present)
+        uses: actions/checkout@v4
+
+      # Step 2: Create a sanitized .env file for docker-compose
+      - name: Create and sanitize .env
         env:
           DB_SECRET: ${{ secrets.DATABASE_URL }}
         run: |
           set -euo pipefail
 
-          # Use Python to avoid shell parsing issues with special characters in secrets
           python - <<'PY' > /tmp/db_url.txt
-          import os
-          s = os.environ.get('DB_SECRET', '')
-          if s.startswith('DATABASE_URL='):
-              s = s[len('DATABASE_URL='):]
-          print(s, end='')
-          PY
+import os
+s = os.environ.get('DB_SECRET', '')
+if s.startswith('DATABASE_URL='):
+    s = s[len('DATABASE_URL='):]
+print(s, end='')
+PY
 
           DBURL=$(cat /tmp/db_url.txt)
           if [ -z "$DBURL" ]; then
-            echo "ERROR: DATABASE_URL secret is empty after sanitization." >&2
+            echo "ERROR: DATABASE_URL secret is empty" >&2
             exit 1
           fi
 
-          cat > .env <<EOF
-          DATABASE_URL=$DBURL
-          EOF
-      - name: Build containers
-        run: docker compose build          # ← builds your Dockerfile
-      - name: Start services
-        run: docker compose up -d          # ← starts app + db
-      - name: Wait for database
-        run: sleep 15                      # ← gives Postgres time
-  # ...sanitization is handled in the Create step above
+          echo "DATABASE_URL=$DBURL" > .env
 
+      # Step 3: Build Docker containers
+      - name: Build containers
+        run: docker compose build
+
+      # Step 4: Start containers in detached mode
+      - name: Start containers
+        run: docker compose up -d
+
+      # Step 5: Wait for the app container to be healthy and DB reachable
+      - name: Wait for app container
+        run: |
+          echo "Waiting for app to become healthy..."
+          for i in {1..30}; do
+            STATUS=$(docker inspect -f '{{.State.Health.Status}}' $(docker compose ps -q app) || echo "starting")
+            if [ "$STATUS" = "healthy" ]; then
+              echo "App is healthy!"
+              break
+            fi
+            echo "Status: $STATUS — waiting 5s"
+            sleep 5
+          done
+
+      # Step 6: Show logs if container failed to start
+      - name: Show app logs on failure
+        if: failure()
+        run: docker compose logs app
+
+      # Step 7: Run Prisma migrations
       - name: Run migrations
         run: docker compose exec -T app npx prisma migrate deploy
+
+      # Step 8: Run tests
       - name: Run tests
-        run: docker compose exec -T app npm test  # ← fails if tests fail
+        run: docker compose exec -T app npm test
+
+      # Step 9: Tear down containers and volumes
       - name: Tear down
-        if: always()                       # ← runs even if step failed
+        if: always()
         run: docker compose down -v
 
-  # ── JOB 2: only runs on main, only if Job 1 passed ──
+  # ── JOB 2: Deploy to EC2 (only from main branch)
   deploy:
-    needs: build-and-test                  # ← blocked until Job 1 green
-    if: github.ref == 'refs/heads/main'   # ← skipped on PRs
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to EC2
@@ -68,9 +92,9 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            # Install Docker engine + compose plugin if missing (Ubuntu-friendly)
+            # Install Docker if missing
             if ! command -v docker >/dev/null 2>&1; then
-              echo "Docker not found on remote host — installing..."
+              echo "Installing Docker..."
               sudo apt-get update
               sudo apt-get install -y ca-certificates curl gnupg lsb-release
               sudo mkdir -p /etc/apt/keyrings
@@ -79,24 +103,37 @@ jobs:
               sudo apt-get update
               sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
               sudo systemctl enable --now docker
-              echo "Docker installed. Adding user to docker group (may require logout/login)."
               sudo usermod -aG docker $USER || true
-            else
-              echo "Docker already installed on remote host."
             fi
 
+            # Pull latest code
             if [ ! -d ~/my-app ]; then
               git clone https://github.com/Don-Quixoteeee/DonorCC.git ~/my-app
             fi
             cd ~/my-app && git pull origin main
 
+            # Create .env
             echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
-            
+
+            # Build and start containers
             docker compose down
             docker compose up --build -d
-            docker compose exec app npx prisma migrate deploy
-            # Use sudo for docker commands in case the deploy user isn't in the docker group
+
+            # Wait for container to be healthy
+            for i in {1..30}; do
+              STATUS=$(docker inspect -f '{{.State.Health.Status}}' $(docker compose ps -q app) || echo "starting")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "App is healthy!"
+                break
+              fi
+              echo "Status: $STATUS — waiting 5s"
+              sleep 5
+            done
+
+            # Run migrations
+            docker compose exec -T app npx prisma migrate deploy
+
+            # Final restart to make sure container is running
             sudo docker compose down || true
             sudo docker compose up --build -d
-            sudo docker compose exec app npx prisma migrate deploy
-
+            sudo docker compose exec -T app npx prisma migrate deploy
