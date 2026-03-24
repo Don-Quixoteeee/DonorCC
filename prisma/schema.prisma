@@ -3,7 +3,7 @@
 
 datasource db {
   provider = "postgresql"
-  // url removed for Prisma 7+
+  url      = env("DATABASE_URL")  // migrations need this
 }
 
 generator client {
