@@ -1,12 +1,10 @@
 services:
 version: '3.9'  # can remove `version` if Prisma complains
-
-services:
   app:
     build: .
     container_name: donorconnect_app
     ports:
-      - "3000:3000"
+      - "80:3000"
     env_file:
       - .env      # during local development
     environment:
