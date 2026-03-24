@@ -1,4 +1,5 @@
 name: CI/CD
+
 on:
   push:
     branches: [main, develop]
@@ -6,18 +7,13 @@ on:
     branches: [main]
 
 jobs:
-  # ── JOB 1: Build and Test ──────────────────────────────
   build-and-test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}  # Secret is already clean
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Create .env for docker-compose
-        run: |
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
 
       - name: Build containers
         run: docker compose build
@@ -27,6 +23,9 @@ jobs:
 
       - name: Wait for database
         run: sleep 15
+
+      - name: Generate Prisma client
+        run: docker compose exec -T app pnpm prisma generate
 
       - name: Run migrations
         run: docker compose exec -T app npx prisma migrate deploy
@@ -38,7 +37,6 @@ jobs:
         if: always()
         run: docker compose down -v
 
-  # ── JOB 2: Deploy to EC2 ──────────────────────────────
   deploy:
     needs: build-and-test
     if: github.ref == 'refs/heads/main'
@@ -51,30 +49,28 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            # Install Docker engine + compose plugin if missing
             if ! command -v docker >/dev/null 2>&1; then
               echo "Docker not found — installing..."
               sudo apt-get update
               sudo apt-get install -y ca-certificates curl gnupg lsb-release
               sudo mkdir -p /etc/apt/keyrings
               curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list
               sudo apt-get update
               sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
               sudo systemctl enable --now docker
               sudo usermod -aG docker $USER || true
             fi
 
-            # Pull or update repo
             if [ ! -d ~/my-app ]; then
               git clone https://github.com/Don-Quixoteeee/DonorCC.git ~/my-app
             fi
             cd ~/my-app && git pull origin main
 
-            # Create .env
             echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
 
-            # Deploy containers
-            sudo docker compose down || true
-            sudo docker compose up --build -d
-            sudo docker compose exec -T app npx prisma migrate deploy
+            docker compose down
+            docker compose up --build -d
+
+            docker compose exec -T app pnpm prisma generate
+            docker compose exec -T app npx prisma migrate deploy
