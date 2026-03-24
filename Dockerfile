@@ -11,19 +11,19 @@ WORKDIR /app
 # Copy package manifests first for layer caching (pnpm is used in this repo)
 COPY package.json pnpm-lock.yaml ./
 
-
 # Copy Prisma schema early so prisma generate can run
 COPY prisma ./prisma
-
 
 # Install pnpm and project dependencies using the locked lockfile
 RUN npm install -g pnpm@10.18.1 && \
     pnpm install --frozen-lockfile
 
-
 # Copy application source
 COPY . .
 
+# Ensure optional directories exist so COPY --from=builder does not fail
+# (Your CI build was failing because these paths didn't exist.)
+RUN mkdir -p /app/public /app/src/generated /app/src/tests
 
 # Add build arg and env var for database
 ARG DATABASE_URL="postgresql://neondb_owner:npg_RDInN1czhb3e@ep-autumn-union-ahvi5s76-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
@@ -32,10 +32,8 @@ ENV DATABASE_URL=${DATABASE_URL}
 # Generate Prisma client (schema generator outputs to prisma/generated)
 RUN pnpm prisma generate
 
-
 # Build the Next.js application
 RUN pnpm build
-
 
 # -------------------------
 # Runtime stage
@@ -51,26 +49,21 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-
 # Copy Prisma schema, migrations and generated client (both prisma/generated and src/generated)
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma/generated ./prisma/generated
 # Some runtime code may import from src/generated — copy it as well if present
 COPY --from=builder /app/src/generated ./src/generated
 
-
 # Copy prisma.config.js (this project uses a JS config file)
 COPY --from=builder /app/prisma.config.js ./prisma.config.js
-
 
 # Copy package.json and tests so CI inside the container can run tests (optional)
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/src/tests ./src/tests
 
-
 # Expose default Next.js port
 EXPOSE 3000
-
 
 # Start the standalone server
 CMD ["node", "server.js"]
